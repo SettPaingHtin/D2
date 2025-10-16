@@ -23,11 +23,37 @@ const clearButton: HTMLButtonElement = document.createElement("button");
 clearButton.textContent = "Clear";
 document.body.append(clearButton);
 
+const undoButton: HTMLButtonElement = document.createElement("button");
+undoButton.textContent = "Undo";
+document.body.append(undoButton);
+
+const redoButton: HTMLButtonElement = document.createElement("button");
+redoButton.textContent = "Redo";
+document.body.append(redoButton);
+
 const displayList: Point[][] = [];
+const redoStack: Point[][] = [];
 
 clearButton.addEventListener("click", () => {
   displayList.length = 0;
+  redoStack.length = 0;
   canvas.dispatchEvent(new Event("drawing-changed"));
+});
+
+undoButton.addEventListener("click", () => {
+  if (displayList.length > 0) {
+    const undoneLine = displayList.pop()!;
+    redoStack.push(undoneLine);
+    canvas.dispatchEvent(new Event("drawing-changed"));
+  }
+});
+
+redoButton.addEventListener("click", () => {
+  if (redoStack.length > 0) {
+    const redoneLine = redoStack.pop()!;
+    displayList.push(redoneLine);
+    canvas.dispatchEvent(new Event("drawing-changed"));
+  }
 });
 
 canvas.addEventListener("drawing-changed", () => {
@@ -47,6 +73,7 @@ let isDrawing = false;
 
 canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
+  redoStack.length = 0;
   const newLine: Point[] = [{ x: event.offsetX, y: event.offsetY }];
   displayList.push(newLine);
   canvas.dispatchEvent(new Event("drawing-changed"));
