@@ -1,5 +1,10 @@
 import "./style.css";
 
+interface Point {
+  x: number;
+  y: number;
+}
+
 const appTitle: HTMLHeadingElement = document.createElement("h1");
 appTitle.textContent = "Quaint Paint";
 document.body.append(appTitle);
@@ -18,22 +23,40 @@ const clearButton: HTMLButtonElement = document.createElement("button");
 clearButton.textContent = "Clear";
 document.body.append(clearButton);
 
+const displayList: Point[][] = [];
+
 clearButton.addEventListener("click", () => {
+  displayList.length = 0;
+  canvas.dispatchEvent(new Event("drawing-changed"));
+});
+
+canvas.addEventListener("drawing-changed", () => {
   context.clearRect(0, 0, canvas.width, canvas.height);
+  for (const line of displayList) {
+    if (line.length < 2) continue;
+    context.beginPath();
+    context.moveTo(line[0].x, line[0].y);
+    for (let i = 1; i < line.length; i++) {
+      context.lineTo(line[i].x, line[i].y);
+    }
+    context.stroke();
+  }
 });
 
 let isDrawing = false;
 
 canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
-  context.beginPath();
-  context.moveTo(event.offsetX, event.offsetY);
+  const newLine: Point[] = [{ x: event.offsetX, y: event.offsetY }];
+  displayList.push(newLine);
+  canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
 canvas.addEventListener("mousemove", (event) => {
   if (!isDrawing) return;
-  context.lineTo(event.offsetX, event.offsetY);
-  context.stroke();
+  const currentLine = displayList[displayList.length - 1];
+  currentLine.push({ x: event.offsetX, y: event.offsetY });
+  canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
 canvas.addEventListener("mouseup", () => {
