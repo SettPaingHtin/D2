@@ -13,11 +13,7 @@ interface DrawingCommand extends DisplayCommand {
   drag(x: number, y: number): void;
 }
 
-function createLineCommand(
-  x: number,
-  y: number,
-  lineWidth: number,
-): DrawingCommand {
+function createLineCommand(x: number, y: number, lineWidth: number): DrawingCommand {
   const points: Point[] = [{ x, y }];
   return {
     display(context: CanvasRenderingContext2D): void {
@@ -49,21 +45,51 @@ const context = canvas.getContext("2d")!;
 context.lineCap = "round";
 context.lineJoin = "round";
 
+const toolBar = document.createElement("div");
+document.body.append(toolBar);
+
 const clearButton: HTMLButtonElement = document.createElement("button");
 clearButton.textContent = "Clear";
-document.body.append(clearButton);
+toolBar.append(clearButton);
 
 const undoButton: HTMLButtonElement = document.createElement("button");
 undoButton.textContent = "Undo";
-document.body.append(undoButton);
+toolBar.append(undoButton);
 
 const redoButton: HTMLButtonElement = document.createElement("button");
 redoButton.textContent = "Redo";
-document.body.append(redoButton);
+toolBar.append(redoButton);
+
+const thinButton: HTMLButtonElement = document.createElement("button");
+thinButton.textContent = "Thin";
+toolBar.append(thinButton);
+
+const thickButton: HTMLButtonElement = document.createElement("button");
+thickButton.textContent = "Thick";
+toolBar.append(thickButton);
 
 const displayList: DisplayCommand[] = [];
 const redoStack: DisplayCommand[] = [];
 let currentCommand: DrawingCommand | null = null;
+let currentLineWidth = 3;
+
+function selectTool(selectedButton: HTMLButtonElement) {
+  thinButton.classList.remove("selected");
+  thickButton.classList.remove("selected");
+  selectedButton.classList.add("selected");
+}
+
+thinButton.addEventListener("click", () => {
+  currentLineWidth = 3;
+  selectTool(thinButton);
+});
+
+thickButton.addEventListener("click", () => {
+  currentLineWidth = 8;
+  selectTool(thickButton);
+});
+
+selectTool(thinButton); // Select thin by default
 
 clearButton.addEventListener("click", () => {
   displayList.length = 0;
@@ -99,7 +125,7 @@ let isDrawing = false;
 canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
   redoStack.length = 0;
-  currentCommand = createLineCommand(event.offsetX, event.offsetY, 3);
+  currentCommand = createLineCommand(event.offsetX, event.offsetY, currentLineWidth);
   displayList.push(currentCommand);
   canvas.dispatchEvent(new Event("drawing-changed"));
 });
