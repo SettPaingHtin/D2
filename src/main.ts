@@ -13,6 +13,10 @@ interface DrawingCommand extends DisplayCommand {
   drag(x: number, y: number): void;
 }
 
+type Tool =
+  | { type: "line"; lineWidth: number }
+  | { type: "sticker"; emoji: string };
+
 function createLineCommand(
   x: number,
   y: number,
@@ -37,18 +41,46 @@ function createLineCommand(
   };
 }
 
+function createStickerCommand(
+  x: number,
+  y: number,
+  emoji: string,
+): DrawingCommand {
+  let position: Point = { x, y };
+  return {
+    display(context: CanvasRenderingContext2D): void {
+      context.font = "24px sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(emoji, position.x, position.y);
+    },
+    drag(x: number, y: number): void {
+      position = { x, y };
+    },
+  };
+}
+
 function createToolPreviewCommand(
   x: number,
   y: number,
-  lineWidth: number,
+  tool: Tool,
 ): DisplayCommand {
   return {
     display(context: CanvasRenderingContext2D): void {
-      context.lineWidth = 1;
-      context.strokeStyle = "gray";
-      context.beginPath();
-      context.arc(x, y, lineWidth / 2, 0, 2 * Math.PI);
-      context.stroke();
+      if (tool.type === "line") {
+        context.lineWidth = 1;
+        context.strokeStyle = "gray";
+        context.beginPath();
+        context.arc(x, y, tool.lineWidth / 2, 0, 2 * Math.PI);
+        context.stroke();
+      } else if (tool.type === "sticker") {
+        context.globalAlpha = 0.5;
+        context.font = "24px sans-serif";
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(tool.emoji, x, y);
+        context.globalAlpha = 1.0;
+      }
     },
   };
 }
@@ -81,33 +113,52 @@ const redoButton: HTMLButtonElement = document.createElement("button");
 redoButton.textContent = "Redo";
 toolBar.append(redoButton);
 
+const lineButtons: HTMLButtonElement[] = [];
+const stickerButtons: HTMLButtonElement[] = [];
+
 const thinButton: HTMLButtonElement = document.createElement("button");
 thinButton.textContent = "Thin";
 toolBar.append(thinButton);
+lineButtons.push(thinButton);
 
 const thickButton: HTMLButtonElement = document.createElement("button");
 thickButton.textContent = "Thick";
 toolBar.append(thickButton);
+lineButtons.push(thickButton);
+
+const stickerEmojis = ["🎨", "✨", "🚀"];
+stickerEmojis.forEach((emoji) => {
+  const button = document.createElement("button");
+  button.textContent = emoji;
+  toolBar.append(button);
+  stickerButtons.push(button);
+  button.addEventListener("click", () => {
+    currentTool = { type: "sticker", emoji: emoji };
+    selectTool(button);
+    canvas.dispatchEvent(new Event("tool-moved"));
+  });
+});
 
 const displayList: DisplayCommand[] = [];
 const redoStack: DisplayCommand[] = [];
 let currentCommand: DrawingCommand | null = null;
-let currentLineWidth = 3;
+let currentTool: Tool = { type: "line", lineWidth: 3 };
 let toolPreview: DisplayCommand | null = null;
 
 function selectTool(selectedButton: HTMLButtonElement) {
-  thinButton.classList.remove("selected");
-  thickButton.classList.remove("selected");
+  [...lineButtons, ...stickerButtons].forEach((b) =>
+    b.classList.remove("selected")
+  );
   selectedButton.classList.add("selected");
 }
 
 thinButton.addEventListener("click", () => {
-  currentLineWidth = 3;
+  currentTool = { type: "line", lineWidth: 3 };
   selectTool(thinButton);
 });
 
 thickButton.addEventListener("click", () => {
-  currentLineWidth = 8;
+  currentTool = { type: "line", lineWidth: 8 };
   selectTool(thickButton);
 });
 
@@ -152,12 +203,24 @@ canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
   toolPreview = null;
   redoStack.length = 0;
-  currentCommand = createLineCommand(
-    event.offsetX,
-    event.offsetY,
-    currentLineWidth,
-  );
-  displayList.push(currentCommand);
+
+  if (currentTool.type === "line") {
+    currentCommand = createLineCommand(
+      event.offsetX,
+      event.offsetY,
+      currentTool.lineWidth,
+    );
+  } else if (currentTool.type === "sticker") {
+    currentCommand = createStickerCommand(
+      event.offsetX,
+      event.offsetY,
+      currentTool.emoji,
+    );
+  }
+
+  if (currentCommand) {
+    displayList.push(currentCommand);
+  }
   canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
@@ -169,7 +232,7 @@ canvas.addEventListener("mousemove", (event) => {
     toolPreview = createToolPreviewCommand(
       event.offsetX,
       event.offsetY,
-      currentLineWidth,
+      currentTool,
     );
     canvas.dispatchEvent(new Event("tool-moved"));
   }
