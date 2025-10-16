@@ -5,6 +5,37 @@ interface Point {
   y: number;
 }
 
+interface DisplayCommand {
+  display(context: CanvasRenderingContext2D): void;
+}
+
+interface DrawingCommand extends DisplayCommand {
+  drag(x: number, y: number): void;
+}
+
+function createLineCommand(
+  x: number,
+  y: number,
+  lineWidth: number,
+): DrawingCommand {
+  const points: Point[] = [{ x, y }];
+  return {
+    display(context: CanvasRenderingContext2D): void {
+      if (points.length < 2) return;
+      context.lineWidth = lineWidth;
+      context.beginPath();
+      context.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        context.lineTo(points[i].x, points[i].y);
+      }
+      context.stroke();
+    },
+    drag(x: number, y: number): void {
+      points.push({ x, y });
+    },
+  };
+}
+
 const appTitle: HTMLHeadingElement = document.createElement("h1");
 appTitle.textContent = "Quaint Paint";
 document.body.append(appTitle);
@@ -17,7 +48,6 @@ document.body.append(canvas);
 const context = canvas.getContext("2d")!;
 context.lineCap = "round";
 context.lineJoin = "round";
-context.lineWidth = 3;
 
 const clearButton: HTMLButtonElement = document.createElement("button");
 clearButton.textContent = "Clear";
@@ -31,8 +61,9 @@ const redoButton: HTMLButtonElement = document.createElement("button");
 redoButton.textContent = "Redo";
 document.body.append(redoButton);
 
-const displayList: Point[][] = [];
-const redoStack: Point[][] = [];
+const displayList: DisplayCommand[] = [];
+const redoStack: DisplayCommand[] = [];
+let currentCommand: DrawingCommand | null = null;
 
 clearButton.addEventListener("click", () => {
   displayList.length = 0;
@@ -42,30 +73,24 @@ clearButton.addEventListener("click", () => {
 
 undoButton.addEventListener("click", () => {
   if (displayList.length > 0) {
-    const undoneLine = displayList.pop()!;
-    redoStack.push(undoneLine);
+    const undoneCommand = displayList.pop()!;
+    redoStack.push(undoneCommand);
     canvas.dispatchEvent(new Event("drawing-changed"));
   }
 });
 
 redoButton.addEventListener("click", () => {
   if (redoStack.length > 0) {
-    const redoneLine = redoStack.pop()!;
-    displayList.push(redoneLine);
+    const redoneCommand = redoStack.pop()!;
+    displayList.push(redoneCommand);
     canvas.dispatchEvent(new Event("drawing-changed"));
   }
 });
 
 canvas.addEventListener("drawing-changed", () => {
   context.clearRect(0, 0, canvas.width, canvas.height);
-  for (const line of displayList) {
-    if (line.length < 2) continue;
-    context.beginPath();
-    context.moveTo(line[0].x, line[0].y);
-    for (let i = 1; i < line.length; i++) {
-      context.lineTo(line[i].x, line[i].y);
-    }
-    context.stroke();
+  for (const command of displayList) {
+    command.display(context);
   }
 });
 
@@ -74,22 +99,21 @@ let isDrawing = false;
 canvas.addEventListener("mousedown", (event) => {
   isDrawing = true;
   redoStack.length = 0;
-  const newLine: Point[] = [{ x: event.offsetX, y: event.offsetY }];
-  displayList.push(newLine);
+  currentCommand = createLineCommand(event.offsetX, event.offsetY, 3);
+  displayList.push(currentCommand);
   canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
 canvas.addEventListener("mousemove", (event) => {
-  if (!isDrawing) return;
-  const currentLine = displayList[displayList.length - 1];
-  currentLine.push({ x: event.offsetX, y: event.offsetY });
+  if (!isDrawing || !currentCommand) return;
+  currentCommand.drag(event.offsetX, event.offsetY);
   canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
-canvas.addEventListener("mouseup", () => {
+const stopDrawing = () => {
   isDrawing = false;
-});
+  currentCommand = null;
+};
 
-canvas.addEventListener("mouseout", () => {
-  isDrawing = false;
-});
+canvas.addEventListener("mouseup", stopDrawing);
+canvas.addEventListener("mouseout", stopDrawing);
