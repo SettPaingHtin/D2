@@ -17,6 +17,8 @@ type Tool =
   | { type: "line"; lineWidth: number }
   | { type: "sticker"; emoji: string };
 
+const STICKER_FONT_SIZE = "32px";
+
 function createLineCommand(
   x: number,
   y: number,
@@ -49,7 +51,7 @@ function createStickerCommand(
   let position: Point = { x, y };
   return {
     display(context: CanvasRenderingContext2D): void {
-      context.font = "24px sans-serif";
+      context.font = `${STICKER_FONT_SIZE} sans-serif`;
       context.textAlign = "center";
       context.textBaseline = "middle";
       context.fillText(emoji, position.x, position.y);
@@ -75,7 +77,7 @@ function createToolPreviewCommand(
         context.stroke();
       } else if (tool.type === "sticker") {
         context.globalAlpha = 0.5;
-        context.font = "24px sans-serif";
+        context.font = `${STICKER_FONT_SIZE} sans-serif`;
         context.textAlign = "center";
         context.textBaseline = "middle";
         context.fillText(tool.emoji, x, y);
@@ -120,16 +122,16 @@ toolBar.append(exportButton);
 const allToolButtons: HTMLButtonElement[] = [];
 
 const thinButton: HTMLButtonElement = document.createElement("button");
-thinButton.textContent = "Thin";
+thinButton.textContent = "Pen";
 toolBar.append(thinButton);
 allToolButtons.push(thinButton);
 
 const thickButton: HTMLButtonElement = document.createElement("button");
-thickButton.textContent = "Thick";
+thickButton.textContent = "Marker";
 toolBar.append(thickButton);
 allToolButtons.push(thickButton);
 
-const initialStickers = ["🎨", "✨", "🚀"];
+const initialStickers = ["🖌️", "🎨", "🌟"];
 initialStickers.forEach((emoji) => {
   const button = document.createElement("button");
   button.textContent = emoji;
@@ -147,7 +149,7 @@ addStickerButton.textContent = "Add Sticker";
 toolBar.append(addStickerButton);
 
 addStickerButton.addEventListener("click", () => {
-  const text = prompt("Custom sticker text", "🖌️");
+  const text = prompt("Custom sticker text", "✨");
   if (text) {
     const button = document.createElement("button");
     button.textContent = text;
@@ -169,7 +171,7 @@ addStickerButton.addEventListener("click", () => {
 const displayList: DisplayCommand[] = [];
 const redoStack: DisplayCommand[] = [];
 let currentCommand: DrawingCommand | null = null;
-let currentTool: Tool = { type: "line", lineWidth: 3 };
+let currentTool: Tool = { type: "line", lineWidth: 2 };
 let toolPreview: DisplayCommand | null = null;
 
 function selectTool(selectedButton: HTMLButtonElement) {
@@ -178,12 +180,12 @@ function selectTool(selectedButton: HTMLButtonElement) {
 }
 
 thinButton.addEventListener("click", () => {
-  currentTool = { type: "line", lineWidth: 3 };
+  currentTool = { type: "line", lineWidth: 2 };
   selectTool(thinButton);
 });
 
 thickButton.addEventListener("click", () => {
-  currentTool = { type: "line", lineWidth: 8 };
+  currentTool = { type: "line", lineWidth: 10 };
   selectTool(thickButton);
 });
 
