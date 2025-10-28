@@ -14,7 +14,7 @@ interface DrawingCommand extends DisplayCommand {
 }
 
 type Tool =
-  | { type: "line"; lineWidth: number }
+  | { type: "line"; lineWidth: number; color: string }
   | { type: "sticker"; emoji: string };
 
 const STICKER_FONT_SIZE = "32px";
@@ -23,13 +23,14 @@ function createLineCommand(
   x: number,
   y: number,
   lineWidth: number,
+  color: string,
 ): DrawingCommand {
   const points: Point[] = [{ x, y }];
   return {
     display(context: CanvasRenderingContext2D): void {
       if (points.length < 2) return;
       context.lineWidth = lineWidth;
-      context.strokeStyle = "black";
+      context.strokeStyle = color;
       context.beginPath();
       context.moveTo(points[0].x, points[0].y);
       for (let i = 1; i < points.length; i++) {
@@ -71,7 +72,7 @@ function createToolPreviewCommand(
     display(context: CanvasRenderingContext2D): void {
       if (tool.type === "line") {
         context.lineWidth = 1;
-        context.strokeStyle = "gray";
+        context.strokeStyle = tool.color;
         context.beginPath();
         context.arc(x, y, tool.lineWidth / 2, 0, 2 * Math.PI);
         context.stroke();
@@ -148,6 +149,61 @@ const addStickerButton = document.createElement("button");
 addStickerButton.textContent = "Add Sticker";
 toolBar.append(addStickerButton);
 
+const colorSlider: HTMLInputElement = document.createElement("input");
+colorSlider.type = "range";
+colorSlider.min = "0";
+colorSlider.max = "360";
+colorSlider.value = "0";
+toolBar.append(colorSlider);
+
+const displayList: DisplayCommand[] = [];
+const redoStack: DisplayCommand[] = [];
+let currentCommand: DrawingCommand | null = null;
+let currentHue = 0;
+let currentTool: Tool = {
+  type: "line",
+  lineWidth: 2,
+  color: "hsl(0, 100%, 0%)",
+};
+let toolPreview: DisplayCommand | null = null;
+
+function selectTool(selectedButton: HTMLButtonElement) {
+  allToolButtons.forEach((b) => b.classList.remove("selected"));
+  selectedButton.classList.add("selected");
+}
+
+function updateLineToolColor() {
+  if (currentTool.type === "line") {
+    currentTool.color = `hsl(${currentHue}, 100%, 50%)`;
+  }
+}
+
+colorSlider.addEventListener("input", () => {
+  currentHue = parseInt(colorSlider.value, 10);
+  updateLineToolColor();
+  canvas.dispatchEvent(new Event("tool-moved"));
+});
+
+thinButton.addEventListener("click", () => {
+  currentTool = {
+    type: "line",
+    lineWidth: 2,
+    color: `hsl(${currentHue}, 100%, 50%)`,
+  };
+  selectTool(thinButton);
+});
+
+thickButton.addEventListener("click", () => {
+  currentTool = {
+    type: "line",
+    lineWidth: 10,
+    color: `hsl(${currentHue}, 100%, 50%)`,
+  };
+  selectTool(thickButton);
+});
+
+selectTool(thinButton);
+
 addStickerButton.addEventListener("click", () => {
   const text = prompt("Custom sticker text", "✨");
   if (text) {
@@ -167,29 +223,6 @@ addStickerButton.addEventListener("click", () => {
     canvas.dispatchEvent(new Event("tool-moved"));
   }
 });
-
-const displayList: DisplayCommand[] = [];
-const redoStack: DisplayCommand[] = [];
-let currentCommand: DrawingCommand | null = null;
-let currentTool: Tool = { type: "line", lineWidth: 2 };
-let toolPreview: DisplayCommand | null = null;
-
-function selectTool(selectedButton: HTMLButtonElement) {
-  allToolButtons.forEach((b) => b.classList.remove("selected"));
-  selectedButton.classList.add("selected");
-}
-
-thinButton.addEventListener("click", () => {
-  currentTool = { type: "line", lineWidth: 2 };
-  selectTool(thinButton);
-});
-
-thickButton.addEventListener("click", () => {
-  currentTool = { type: "line", lineWidth: 10 };
-  selectTool(thickButton);
-});
-
-selectTool(thinButton);
 
 clearButton.addEventListener("click", () => {
   displayList.length = 0;
@@ -228,7 +261,7 @@ exportButton.addEventListener("click", () => {
   }
 
   const anchor = document.createElement("a");
-  anchor.href = exportCanvas.toDataURL("image/png");
+  anchor.href = exportCanvas.toDataURL("image.png");
   anchor.download = "sketchpad.png";
   anchor.click();
 });
@@ -258,6 +291,7 @@ canvas.addEventListener("mousedown", (event) => {
       event.offsetX,
       event.offsetY,
       currentTool.lineWidth,
+      currentTool.color,
     );
   } else if (currentTool.type === "sticker") {
     currentCommand = createStickerCommand(

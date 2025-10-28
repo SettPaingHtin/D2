@@ -28,3 +28,9 @@ button:hover {
   background-color: #cccccc;
   border-style: inset;
 }
+
+input[type="range"] {
+  margin-left: 8px;
+  vertical-align: middle;
+  cursor: pointer;
+}
