@@ -113,30 +113,53 @@ const redoButton: HTMLButtonElement = document.createElement("button");
 redoButton.textContent = "Redo";
 toolBar.append(redoButton);
 
-const lineButtons: HTMLButtonElement[] = [];
-const stickerButtons: HTMLButtonElement[] = [];
+const allToolButtons: HTMLButtonElement[] = [];
 
 const thinButton: HTMLButtonElement = document.createElement("button");
 thinButton.textContent = "Thin";
 toolBar.append(thinButton);
-lineButtons.push(thinButton);
+allToolButtons.push(thinButton);
 
 const thickButton: HTMLButtonElement = document.createElement("button");
 thickButton.textContent = "Thick";
 toolBar.append(thickButton);
-lineButtons.push(thickButton);
+allToolButtons.push(thickButton);
 
-const stickerEmojis = ["🎨", "✨", "🚀"];
-stickerEmojis.forEach((emoji) => {
+const initialStickers = ["🎨", "✨", "🚀"];
+initialStickers.forEach((emoji) => {
   const button = document.createElement("button");
   button.textContent = emoji;
   toolBar.append(button);
-  stickerButtons.push(button);
+  allToolButtons.push(button);
   button.addEventListener("click", () => {
     currentTool = { type: "sticker", emoji: emoji };
     selectTool(button);
     canvas.dispatchEvent(new Event("tool-moved"));
   });
+});
+
+const addStickerButton = document.createElement("button");
+addStickerButton.textContent = "Add Sticker";
+toolBar.append(addStickerButton);
+
+addStickerButton.addEventListener("click", () => {
+  const text = prompt("Custom sticker text", "🖌️");
+  if (text) {
+    const button = document.createElement("button");
+    button.textContent = text;
+    toolBar.append(button);
+    allToolButtons.push(button);
+
+    button.addEventListener("click", () => {
+      currentTool = { type: "sticker", emoji: text };
+      selectTool(button);
+      canvas.dispatchEvent(new Event("tool-moved"));
+    });
+
+    currentTool = { type: "sticker", emoji: text };
+    selectTool(button);
+    canvas.dispatchEvent(new Event("tool-moved"));
+  }
 });
 
 const displayList: DisplayCommand[] = [];
@@ -146,9 +169,7 @@ let currentTool: Tool = { type: "line", lineWidth: 3 };
 let toolPreview: DisplayCommand | null = null;
 
 function selectTool(selectedButton: HTMLButtonElement) {
-  [...lineButtons, ...stickerButtons].forEach((b) =>
-    b.classList.remove("selected")
-  );
+  allToolButtons.forEach((b) => b.classList.remove("selected"));
   selectedButton.classList.add("selected");
 }
 
