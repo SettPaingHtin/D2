@@ -113,6 +113,10 @@ const redoButton: HTMLButtonElement = document.createElement("button");
 redoButton.textContent = "Redo";
 toolBar.append(redoButton);
 
+const exportButton: HTMLButtonElement = document.createElement("button");
+exportButton.textContent = "Export";
+toolBar.append(exportButton);
+
 const allToolButtons: HTMLButtonElement[] = [];
 
 const thinButton: HTMLButtonElement = document.createElement("button");
@@ -203,6 +207,28 @@ redoButton.addEventListener("click", () => {
     displayList.push(redoStack.pop()!);
     canvas.dispatchEvent(new Event("drawing-changed"));
   }
+});
+
+exportButton.addEventListener("click", () => {
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = 1024;
+  exportCanvas.height = 1024;
+  const exportContext = exportCanvas.getContext("2d")!;
+
+  exportContext.lineCap = "round";
+  exportContext.lineJoin = "round";
+
+  const scaleFactor = 4;
+  exportContext.scale(scaleFactor, scaleFactor);
+
+  for (const command of displayList) {
+    command.display(exportContext);
+  }
+
+  const anchor = document.createElement("a");
+  anchor.href = exportCanvas.toDataURL("image/png");
+  anchor.download = "sketchpad.png";
+  anchor.click();
 });
 
 function redraw() {
